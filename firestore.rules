@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- SOCIETIES ---
+    match /societies/{societyId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Admin only, usually managed via console or secure backend
+    }
+
+    // --- HOUSEHOLDS ---
+    function isValidHousehold(data) {
+      return data.keys().hasAll(['flat_number', 'resident_name', 'phone', 'society_id']) &&
+             data.flat_number is string && data.flat_number.size() <= 20 &&
+             data.resident_name is string && data.resident_name.size() <= 100 &&
+             data.phone is string && data.phone.size() <= 15 &&
+             data.society_id is string;
+    }
+
+    match /households/{householdId} {
+      allow get: if isSignedIn() && (isOwner(existing().auth_user_id) || isOwner(householdId));
+      allow list: if isSignedIn() && (resource.data.auth_user_id == request.auth.uid);
+      allow create: if isSignedIn() && isValidHousehold(incoming()) && isOwner(incoming().auth_user_id);
+      allow update: if isSignedIn() && isOwner(existing().auth_user_id) && 
+                      incoming().diff(existing()).affectedKeys().hasOnly(['push_subscription', 'resident_name']);
+    }
+
+    // --- COLLECTIONS ---
+    function isValidCollection(data) {
+      return data.keys().hasAll(['household_id', 'weight_kg', 'grade']) &&
+             data.household_id is string &&
+             data.weight_kg is number && data.weight_kg > 0 &&
+             data.grade in ['BEST', 'GOOD', 'AVERAGE', 'REJECT'];
+    }
+
+    match /collections/{collectionId} {
+      // Residents can see their own collections
+      allow read: if isSignedIn() && (resource.data.household_id == request.auth.uid || 
+                     get(/databases/$(database)/documents/households/$(resource.data.household_id)).data.auth_user_id == request.auth.uid);
+      
+      // Drivers can write collections (in this demo, we'll allow signed-in users for simplicity, 
+      // but in real app we'd check driver role)
+      allow create: if isSignedIn() && isValidCollection(incoming());
+    }
+
+    // --- CREDIT WALLETS ---
+    function isValidWallet(data) {
+      return data.keys().hasAll(['household_id', 'balance']) &&
+             data.household_id is string &&
+             data.balance is int && data.balance >= 0;
+    }
+
+    match /credit_wallets/{walletId} {
+      allow read: if isSignedIn() && (resource.data.household_id == request.auth.uid || 
+                     get(/databases/$(database)/documents/households/$(resource.data.household_id)).data.auth_user_id == request.auth.uid);
+      
+      // Wallet updates are sensitive, usually triggered by collection writes or cloud functions.
+      // For this demo, we'll allow the collection flow to update rewards if it's atomic.
+      allow write: if isSignedIn(); 
+    }
+  }
+}

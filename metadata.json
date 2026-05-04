@@ -1,0 +1,6 @@
+{
+  "name": "BioLoop — Waste to Wealth",
+  "description": "Revolutionizing waste management through circular economy and rewards.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["real-time", "pwa", "qr-scanning"]
+}

@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "Society": {
+      "title": "Society",
+      "description": "A residential housing society.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "city": { "type": "string" },
+        "subscription_tier": { "type": "string", "enum": ["STARTER", "STANDARD", "PREMIUM", "ENTERPRISE"] },
+        "monthly_fee": { "type": "integer" },
+        "total_flats": { "type": "integer" },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "city"]
+    },
+    "Household": {
+      "title": "Household",
+      "description": "A resident household within a society.",
+      "type": "object",
+      "properties": {
+        "flat_number": { "type": "string" },
+        "resident_name": { "type": "string" },
+        "phone": { "type": "string" },
+        "society_id": { "type": "string" },
+        "auth_user_id": { "type": "string" },
+        "static_qr_token": { "type": "string" },
+        "onboarded_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["flat_number", "resident_name", "phone", "society_id"]
+    },
+    "Collection": {
+      "title": "Collection",
+      "description": "A waste collection event.",
+      "type": "object",
+      "properties": {
+        "household_id": { "type": "string" },
+        "driver_id": { "type": "string" },
+        "society_id": { "type": "string" },
+        "collected_at": { "type": "string", "format": "date-time" },
+        "weight_kg": { "type": "number" },
+        "grade": { "type": "string", "enum": ["BEST", "GOOD", "AVERAGE", "REJECT"] },
+        "credits_earned": { "type": "integer" }
+      },
+      "required": ["household_id", "weight_kg", "grade"]
+    },
+    "CreditWallet": {
+      "title": "Credit Wallet",
+      "description": "Stores the accumulated credits for a household.",
+      "type": "object",
+      "properties": {
+        "household_id": { "type": "string" },
+        "balance": { "type": "integer" },
+        "lifetime_earned": { "type": "integer" },
+        "current_streak_weeks": { "type": "integer" },
+        "last_collection_date": { "type": "string", "format": "date" }
+      },
+      "required": ["household_id", "balance"]
+    }
+  },
+  "firestore": {
+    "/societies/{societyId}": {
+      "schema": "Society",
+      "description": "Collection of societies."
+    },
+    "/households/{householdId}": {
+      "schema": "Household",
+      "description": "Collection of households."
+    },
+    "/collections/{collectionId}": {
+      "schema": "Collection",
+      "description": "Collection of waste collection events."
+    },
+    "/credit_wallets/{walletId}": {
+      "schema": "CreditWallet",
+      "description": "Collection of credit wallets."
+    }
+  }
+}
